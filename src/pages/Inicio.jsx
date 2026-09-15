@@ -8,7 +8,7 @@ export default function Inicio() {
                 </div>
 
                 <p className="brand-name">
-                    GRUPO DAROS
+                    GRUPO DAROS - PUNTO DE VENTA
                 </p>
 
                 <h1>
