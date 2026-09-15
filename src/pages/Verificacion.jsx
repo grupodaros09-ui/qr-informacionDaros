@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { obtenerVerificacion, descargarRemisionPdf } from "../api/verificacion.api";
 
 export default function Verificacion() {
-  const { token } = useParams();
+  const { token: pathToken } = useParams();
+  const [searchParams] = useSearchParams();
+
+  // Obtener el identificador ya sea de la ruta /v/:token o de parámetros query ?id=... o ?folio=... o ?token=...
+  const token =
+    pathToken ||
+    searchParams.get("id") ||
+    searchParams.get("folio") ||
+    searchParams.get("token");
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
+
 
   useEffect(() => {
     let activo = true;
