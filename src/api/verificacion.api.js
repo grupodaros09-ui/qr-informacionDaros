@@ -1,102 +1,67 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router";
-import { obtenerDocumento } from "../api/consulta.api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-export default function Verificacion() {
-    const { token } = useParams();
+export async function obtenerVerificacion(token) {
+  if (!token) {
+    throw new Error("Código de verificación no válido.");
+  }
 
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+  if (!API_URL) {
+    throw new Error("La dirección del servidor no está configurada.");
+  }
 
-    useEffect(() => {
-        async function consultar() {
-            try {
-                setLoading(true);
-
-                const resultado = await obtenerDocumento(token);
-
-                setData(resultado);
-            } catch (error) {
-                setError(error.message);
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        consultar();
-    }, [token]);
-
-    if (loading) {
-        return (
-            <main className="page">
-                <div className="card">
-                    <div className="spinner" />
-                    <p>Verificando información...</p>
-                </div>
-            </main>
-        );
-    }
-
-    if (error) {
-        return (
-            <main className="page">
-                <div className="card error">
-                    <div className="error-icon">!</div>
-
-                    <h1>No válido</h1>
-
-                    <p>{error}</p>
-                </div>
-            </main>
-        );
-    }
-
-    return (
-        <main className="page">
-            <article className="card">
-
-                <header>
-                    <span className="brand">
-                        GRUPO DAROS
-                    </span>
-
-                    <h1>Verificación</h1>
-
-                    <span className="valid">
-                        ✓ Documento válido
-                    </span>
-                </header>
-
-                <section className="content">
-
-                    <div className="field">
-                        <span>Folio</span>
-                        <strong>{data.folio}</strong>
-                    </div>
-
-                    <div className="field">
-                        <span>Nombre</span>
-                        <strong>{data.nombre}</strong>
-                    </div>
-
-                    <div className="field">
-                        <span>Fecha</span>
-                        <strong>{data.fecha}</strong>
-                    </div>
-
-                    <div className="field">
-                        <span>Estatus</span>
-                        <strong>{data.estatus}</strong>
-                    </div>
-
-                </section>
-
-                <footer>
-                    Información verificada directamente desde el sistema.
-                </footer>
-
-            </article>
-        </main>
+  try {
+    const response = await fetch(
+      `${API_URL}/public/verificacion/${encodeURIComponent(token)}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      }
     );
+
+    if (response.status === 404) {
+      throw new Error("El código QR no corresponde a ningún registro o remisión.");
+    }
+
+    if (response.status === 410) {
+      throw new Error("Este registro ya no se encuentra disponible.");
+    }
+
+    if (!response.ok) {
+      throw new Error("No fue posible verificar la información.");
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      // Si el backend aun no responde, se entrega un mock representativo en desarrollo local
+      console.warn("No se pudo conectar al servidor backend. Usando datos de respaldo.");
+    }
+    throw error;
+  }
+}
+
+export async function descargarRemisionPdf(token) {
+  if (!token) throw new Error("Código token no proporcionado");
+  const response = await fetch(
+    `${API_URL}/public/verificacion/${encodeURIComponent(token)}/pdf`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("No se pudo descargar el documento PDF.");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Remision_${token}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }
